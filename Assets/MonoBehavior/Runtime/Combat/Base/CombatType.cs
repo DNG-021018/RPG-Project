@@ -22,11 +22,6 @@ namespace RPG.Combat.CombatType
         {
             void Riposte(HitReactionType reactionType);
         }
-
-        // public interface IFinisherBehaviour
-        // {
-        //     void PlayFinisher(CharacterCore attacker, CharacterCore target);
-        // }
     }
     #endregion
 
@@ -53,7 +48,6 @@ namespace RPG.Combat.CombatType
             Light,
             Heavy,
             Critical,
-            // Finisher,
         }
 
         public enum HitReactionType
@@ -62,7 +56,6 @@ namespace RPG.Combat.CombatType
             Heavy,
             Critical,
             Knockback,
-            // Finisher
         }
     }
     #endregion

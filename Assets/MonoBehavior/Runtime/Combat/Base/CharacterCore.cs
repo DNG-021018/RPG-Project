@@ -9,10 +9,10 @@ namespace RPG.Combat.Character
     {
         public CharacterController Controller { get; private set; }
 
-        private readonly List<ICharacterComponents> _cores = new();
+        [SerializeReference] private readonly List<ICharacterComponents> _cores = new();
         private readonly Dictionary<Type, ICharacterComponents> _coreDict = new();
 
-        readonly Helpers.Logger logger = new();
+        protected readonly Helpers.Logger logger = new();
 
         private void Awake()
         {
@@ -26,30 +26,36 @@ namespace RPG.Combat.Character
             }
         }
 
-        private void Register(ICharacterComponents core)
+        protected void Register(ICharacterComponents core)
         {
             if (core == null) return;
 
-            Type type = core.GetType();
-            if (_coreDict.ContainsKey(type))
+            Type concreteType = core.GetType();
+            if (_coreDict.ContainsKey(concreteType))
             {
-                logger.LogError(this, "Core of type " + type.Name + " is already registered.");
+                logger.LogWarning(this, "Core of type " + concreteType.Name + " is already registered.");
                 return;
             }
 
             _cores.Add(core);
-            _coreDict[type] = core;
+            _coreDict[concreteType] = core;
+
+            foreach (Type interfaceType in concreteType.GetInterfaces())
+            {
+                if (interfaceType == typeof(ICharacterComponents)) continue;
+                if (_coreDict.ContainsKey(interfaceType)) continue;
+                _coreDict[interfaceType] = core;
+            }
         }
 
         protected virtual void SetupCores()
         {
             Register(new CharacterHealth());
-            Register(new CharacterMovement());
             Register(new CharacterCombat());
             Register(new CharacterAnimatorController());
         }
 
-        public T TryGetCore<T>() where T : class, ICharacterComponents
+        public T TryGetCore<T>() where T : class
         {
             if (_coreDict.TryGetValue(typeof(T), out var core))
             {

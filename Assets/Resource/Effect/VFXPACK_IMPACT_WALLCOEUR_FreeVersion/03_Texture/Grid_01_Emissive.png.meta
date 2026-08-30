@@ -144,8 +144,9 @@ TextureImporter:
   assetBundleVariant: 
 AssetOrigin:
   serializedVersion: 1
-  productId: 335800
-  packageName: VFX - Impact and Hit - Free
-  packageVersion: 1.0
-  assetPath: Assets/VFXPACK_IMPACT_WALLCOEUR_FreeVersion/03_Texture/Grid_01_Emissive.png
-  uploadId: 794602
+  productId: 196526
+  packageName: Starter Assets - ThirdPerson | Updates in new CharacterController
+    package
+  packageVersion: 1.1.7
+  assetPath: Assets/Resource/Effect/VFXPACK_IMPACT_WALLCOEUR_FreeVersion/03_Texture/Grid_01_Emissive.png
+  uploadId: 879174
