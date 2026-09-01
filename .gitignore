@@ -109,3 +109,11 @@ InitTestScene*.unity*
 
 # Ignore local plugins
 *_Remove
+
+# Large design/source files
+*.psd
+*.psd.meta
+*.psb
+*.psb.meta
+*.nsd
+*.nsd.meta
