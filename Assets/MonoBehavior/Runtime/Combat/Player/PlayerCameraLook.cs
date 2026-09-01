@@ -6,28 +6,6 @@ using UnityEngine.InputSystem;
 
 namespace RPG.Combat.Character
 {
-    /// <summary>
-    /// Điều khiển "look" bằng Cinemachine 3: mỗi frame đọc Look từ IPlayerInput rồi cộng dồn
-    /// vào các InputAxis tương ứng trên CinemachineCamera. Bản thân các component vị trí/xoay
-    /// của Cinemachine (OrbitalFollow, PanTilt...) KHÔNG tự đọc input - theo docs, chúng "does
-    /// not read user input itself" và cần được "driven by ... some other means that you
-    /// devise" - nên feed input theo đường IPlayerInput như thế này là đúng ý đồ package,
-    /// đồng thời vẫn giữ nguyên tắc "chỉ LocalPlayerInput biết tới thiết bị input thật" của
-    /// dự án (xem LocalPlayerInput.cs).
-    ///
-    /// Tự nhận diện 1 trong 2 kiểu rig phổ biến của Cinemachine 3, gắn cái nào trên
-    /// CinemachineCamera thì dùng cái đó (có thể dùng cả 2 cùng lúc nếu bạn ghép rig lạ,
-    /// nhưng bình thường chỉ có 1):
-    ///   - CinemachineOrbitalFollow (Body): camera orbit quanh nhân vật, HorizontalAxis/
-    ///     VerticalAxis chính là góc nhìn. Để Aim trống ("Do nothing") vì OrbitalFollow + có
-    ///     LookAt sẽ tự hard-look-at nhân vật. Hợp với kiểu action-camera orbit (Genshin,
-    ///     Dark Souls...), khớp với cách PlayerMovement đang dùng cameraTransform.forward.
-    ///   - CinemachinePanTilt (Aim): dùng khi Body là CinemachineThirdPersonFollow (rig kiểu
-    ///     đứng trên vai nhân vật) - PanAxis/TiltAxis xoay thẳng camera theo input.
-    ///
-    /// Chỉ nên đăng ký cho nhân vật cục bộ (xem PlayerCore.SetupCores): camera là tài nguyên
-    /// dùng chung của cả scene, nhân vật điều khiển từ network không nên tự giành nó.
-    /// </summary>
     [Serializable]
     public class PlayerCameraLook : ICharacterComponents
     {
@@ -107,11 +85,6 @@ namespace RPG.Combat.Character
             Vector2 look = input.CurrentInput.Look;
             if (look.sqrMagnitude <= 0f) return;
 
-            // KHÔNG nhân Time.deltaTime ở đây: Look đã được scale sẵn theo từng thiết bị ngay
-            // trong .inputactions - delta chuột theo pixel (đã độc lập frame rate) x0.05, còn
-            // giá trị analog stick (một "tốc độ", cần giữ qua nhiều frame để tiếp tục xoay)
-            // x300. Nhân thêm deltaTime ở đây sẽ làm sai cả 2 (chuột xoay chậm theo frame rate,
-            // gamepad xoay quá nhanh/không đúng vì bị nhân deltaTime 2 lần về mặt ý nghĩa).
             float yawDelta = look.x * yawSensitivity;
             float pitchDelta = (invertY ? -look.y : look.y) * pitchSensitivity;
 
@@ -140,8 +113,6 @@ namespace RPG.Combat.Character
 
         private static void ApplyDelta(ref InputAxis axis, float delta)
         {
-            // ClampValue tôn trọng Range/Wrap bạn đã cấu hình sẵn trên component trong
-            // Inspector (ví dụ giới hạn góc tilt -30..70 độ), không cần hardcode lại ở đây.
             axis.Value = axis.ClampValue(axis.Value + delta);
         }
 
@@ -152,9 +123,6 @@ namespace RPG.Combat.Character
             Cursor.visible = !locked;
         }
 
-        // Chuột có thể bị nhả khóa ngoài ý muốn (cửa sổ mất focus, Alt-Tab, một số nền tảng tự
-        // nhả khi bấm Esc...). Bấm chuột trái lại trong lúc đang chơi sẽ khóa/ẩn lại ngay thay
-        // vì bắt người chơi thoát/vào lại game.
         private void TryReclaimCursor()
         {
             if (!lockCursorWhilePlaying || Cursor.lockState == CursorLockMode.Locked) return;

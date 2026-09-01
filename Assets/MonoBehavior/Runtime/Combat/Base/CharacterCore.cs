@@ -21,8 +21,8 @@ namespace RPG.Combat.Character
             SetupCores();
             foreach (ICharacterComponents core in _cores)
             {
-                core.OnCoreInit(this);
                 core.OnCoreAwake();
+                core.OnCoreInit(this);
             }
         }
 
@@ -39,6 +39,7 @@ namespace RPG.Combat.Character
 
             _cores.Add(core);
             _coreDict[concreteType] = core;
+            logger.Log(this, "Registered core of type " + concreteType.Name + ".");
 
             foreach (Type interfaceType in concreteType.GetInterfaces())
             {
@@ -52,7 +53,6 @@ namespace RPG.Combat.Character
         {
             Register(new CharacterHealth());
             Register(new CharacterCombat());
-            Register(new CharacterAnimatorController());
         }
 
         public T TryGetCore<T>() where T : class

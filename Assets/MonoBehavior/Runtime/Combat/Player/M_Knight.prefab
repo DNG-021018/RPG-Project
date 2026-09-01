@@ -2932,6 +2932,10 @@ MonoBehaviour:
     rid: 1001
   cameraLook:
     rid: 1002
+  animatorController:
+    rid: 1003
+  networkPlayerInput:
+    rid: 1004
   references:
     version: 2
     RefIds:
@@ -2947,8 +2951,13 @@ MonoBehaviour:
         rotationSpeed: 12
         gravity: -20
         jumpHeight: 1.2
-        rollSpeed: 7
-        rollDuration: 0.4
+        heavyLandingImpactSpeed: 10
+        rollSpeed: 4
+        backstepSpeed: 4
+        rollDuration: 0.5
+        backstepDuration: 0.5
+        rollCooldown: 0.2
+        moveInputThreshold: 0.1
     - rid: 1002
       type: {class: PlayerCameraLook, ns: RPG.Combat.Character, asm: Assembly-CSharp}
       data:
@@ -2958,6 +2967,14 @@ MonoBehaviour:
         pitchSensitivity: 1
         invertY: 0
         lockCursorWhilePlaying: 1
+    - rid: 1003
+      type: {class: PlayerAnimatorController, ns: RPG, asm: Assembly-CSharp}
+      data:
+        animator: {fileID: 390010822146280826}
+        blendDampTime: 0.15
+    - rid: 1004
+      type: {class: NetworkPlayerInput, ns: RPG.Combat.Player.Input, asm: Assembly-CSharp}
+      data: 
 --- !u!1 &2797083945917813714
 GameObject:
   m_ObjectHideFlags: 0
@@ -6709,6 +6726,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8031160821580291204}
   - component: {fileID: 390010822146280826}
+  - component: {fileID: 8215051991479534420}
   m_Layer: 0
   m_Name: Models
   m_TagString: Untagged
@@ -6756,6 +6774,18 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &8215051991479534420
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5342939728235012094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a93d3956bbc45a148a0f0903b8badaaf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &5406835555606803090
 GameObject:
   m_ObjectHideFlags: 0

@@ -4,24 +4,6 @@ using UnityEngine;
 
 namespace RPG.Combat.Character
 {
-    /// <summary>
-    /// Điều khiển nhân vật bằng CharacterController (không dùng Collider/Rigidbody).
-    /// Đổi từ MonoBehaviour sang plain class implement ICharacterComponents, giống
-    /// CharacterHealth/CharacterCombat, để chạy chung vòng đời (Update, FixedUpdate...) do
-    /// CharacterCore điều phối thay vì tự quản lý GetComponent/Update riêng.
-    ///
-    /// Toàn bộ logic chạy trong OnCoreUpdate (không phải OnCoreFixedUpdate): CharacterController
-    /// không nằm trong physics simulation của Rigidbody nên gọi Move() theo Time.deltaTime ở
-    /// Update là chuẩn, đồng thời cùng pha với LocalPlayerInput (cũng đọc input ở Update) nên
-    /// không lệch/nuốt input giữa 2 core.
-    ///
-    /// Kiểu facing: soulslike free-camera - camera (PlayerCameraLook) orbit độc lập quanh nhân
-    /// vật theo input Look, còn nhân vật chỉ xoay mặt theo HƯỚNG DI CHUYỂN (không phải hướng
-    /// camera). Đứng yên thì giữ nguyên hướng mặt hiện tại, không tự xoay theo camera. Khi
-    /// thêm lock-on target sau này, chỉ cần đổi hướng target của Slerp bên dưới (moveDirWorld)
-    /// thành hướng tới mục tiêu bị khóa, và có thể bật lại kiểu blend strafe (dùng hướng di
-    /// chuyển trong local-space của facing-tới-target) cho lúc đang khóa mục tiêu.
-    /// </summary>
     [Serializable]
     public class PlayerMovement : ICharacterComponents
     {
@@ -34,31 +16,46 @@ namespace RPG.Combat.Character
         [Header("Vertical")]
         [SerializeField] private float gravity = -20f;
         [SerializeField] private float jumpHeight = 1.2f;
+        [SerializeField] private float heavyLandingImpactSpeed = 10f;
 
-        [Header("Roll")]
+        [Header("Roll / Backstep")]
         [SerializeField] private float rollSpeed = 7f;
+        [SerializeField] private float sprintRollSpeedMultiplier = 1.3f;
+        [SerializeField] private float backstepSpeed = 4f;
         [SerializeField] private float rollDuration = 0.4f;
+        [SerializeField] private float backstepDuration = 0.35f;
+        [SerializeField] private float rollCooldown = 0.5f;
+        [SerializeField] private float moveInputThreshold = 0.1f;
 
         private CharacterCore cc;
         private IPlayerInput input;
         private Transform selfTransform;
         private Transform cameraTransform;
 
+        private readonly Helpers.Logger logger = new();
+
         private float verticalVelocity;
         private bool isRolling;
         private float rollTimer;
+        private float currentRollSpeed;
+        private bool isBackstepping;
+        private float backstepTimer;
+        private float rollCooldownTimer;
         private Vector3 rollDirection;
+        private bool wasGrounded;
 
-        /// Hướng di chuyển trong không gian cục bộ của nhân vật, nhân với hệ số tốc độ
-        /// (0 = đứng yên, 0.5 = đi bộ, 1 = chạy) - feed thẳng vào BlendX/BlendY của Animator.
-        /// Khớp với 2 vòng bán kính (0.5 / 1.0) trong blend tree "2D Freeform Directional".
-        /// Vì nhân vật luôn xoay để hướng theo moveDirWorld (xem OnCoreUpdate), giá trị này khi
-        /// đang chạy ổn định sẽ hội tụ về gần (0, speedScale) - tức gần như luôn "forward" -
-        /// chỉ lệch nhẹ sang X trong vài frame đang xoay (turn lean), đúng cảm giác soulslike.
         public Vector2 LocomotionBlend { get; private set; }
         public bool IsGrounded { get; private set; }
         public bool IsRolling => isRolling;
+        public bool IsBackstepping => isBackstepping;
+        public bool IsRollOnCooldown => rollCooldownTimer > 0f;
+        public bool CanRoll => !isRolling && !isBackstepping && rollCooldownTimer <= 0f;
         public bool IsCrouching { get; private set; }
+
+        public bool IsJumping { get; private set; }
+        public bool IsFalling { get; private set; }
+        public bool JustLandedHeavy { get; private set; }
+        public bool JustLandedLight { get; private set; }
 
         public void OnCoreInit(CharacterCore characterCore)
         {
@@ -77,9 +74,22 @@ namespace RPG.Combat.Character
             if (input == null || cc.Controller == null) return;
             if (cameraTransform == null && Camera.main != null) cameraTransform = Camera.main.transform;
 
+            if (rollCooldownTimer > 0f) rollCooldownTimer -= Time.deltaTime;
+
             PlayerInputData data = input.CurrentInput;
             IsGrounded = cc.Controller.isGrounded;
-            IsCrouching = data.CrouchHeld;
+            /// IsCrouching = data.CrouchHeld;
+
+            JustLandedHeavy = false;
+            JustLandedLight = false;
+
+            if (!wasGrounded && IsGrounded)
+            {
+                float impactSpeed = Mathf.Abs(verticalVelocity);
+                if (impactSpeed >= heavyLandingImpactSpeed) JustLandedHeavy = true;
+                else JustLandedLight = true;
+            }
+            wasGrounded = IsGrounded;
 
             if (isRolling)
             {
@@ -87,19 +97,22 @@ namespace RPG.Combat.Character
                 return;
             }
 
-            if (data.RollPressed && IsGrounded)
+            if (isBackstepping)
             {
-                StartRoll(data);
+                TickBackstep();
+                return;
+            }
+
+            if (data.RollPressed && IsGrounded && CanRoll)
+            {
+                if (HasMoveInput(data.Move)) StartRoll(data);
+                else StartBackstep();
                 return;
             }
 
             Vector3 moveDirWorld = CameraRelativeDirection(data.Move);
             float speed = data.SprintHeld ? runSpeed : walkSpeed;
             if (data.CrouchHeld) speed *= crouchSpeedMultiplier;
-
-            // Xoay nhân vật theo hướng ĐANG DI CHUYỂN, không theo camera. Camera (PlayerCameraLook)
-            // free-look độc lập quanh nhân vật; đứng yên (không có input di chuyển) thì giữ
-            // nguyên hướng mặt hiện tại thay vì tự xoay theo camera.
             if (moveDirWorld.sqrMagnitude > 0.0001f)
             {
                 Quaternion targetRot = Quaternion.LookRotation(moveDirWorld, Vector3.up);
@@ -120,6 +133,9 @@ namespace RPG.Combat.Character
                 ? selfTransform.InverseTransformDirection(moveDirWorld.normalized)
                 : Vector3.zero;
             LocomotionBlend = new Vector2(localDir.x, localDir.z) * speedScale;
+
+            IsJumping = !IsGrounded && verticalVelocity > 0f;
+            IsFalling = !IsGrounded && verticalVelocity <= 0f;
         }
 
         public void OnCoreAwake() { }
@@ -128,6 +144,8 @@ namespace RPG.Combat.Character
         public void OnCoreLateUpdate() { }
         public void OnCoreDisable() { }
         public void OnCoreDestroy() { }
+
+        private bool HasMoveInput(Vector2 move) => move.sqrMagnitude > moveInputThreshold * moveInputThreshold;
 
         private Vector3 CameraRelativeDirection(Vector2 rawMove)
         {
@@ -147,27 +165,74 @@ namespace RPG.Combat.Character
         {
             if (IsGrounded && verticalVelocity < 0f)
             {
-                verticalVelocity = -2f; // ép nhẹ xuống đất để isGrounded ổn định
+                verticalVelocity = -2f;
             }
             verticalVelocity += gravity * Time.deltaTime;
         }
 
         private void StartRoll(PlayerInputData data)
         {
-            Vector3 dir = data.Move.sqrMagnitude > 0.01f ? CameraRelativeDirection(data.Move) : selfTransform.forward;
+            Vector3 dir = CameraRelativeDirection(data.Move);
             rollDirection = dir.sqrMagnitude > 0.0001f ? dir.normalized : selfTransform.forward;
             isRolling = true;
             rollTimer = rollDuration;
+            currentRollSpeed = data.SprintHeld ? rollSpeed * sprintRollSpeedMultiplier : rollSpeed;
         }
 
         private void TickRoll()
         {
             ApplyGravity();
-            Vector3 motion = rollDirection * rollSpeed + Vector3.up * verticalVelocity;
+            Vector3 motion = rollDirection * currentRollSpeed + Vector3.up * verticalVelocity;
             cc.Controller.Move(motion * Time.deltaTime);
 
             rollTimer -= Time.deltaTime;
-            if (rollTimer <= 0f) isRolling = false;
+            if (rollTimer <= 0f)
+            {
+                EndRoll();
+            }
+        }
+
+        private void StartBackstep()
+        {
+            isBackstepping = true;
+            backstepTimer = backstepDuration;
+        }
+
+        private void TickBackstep()
+        {
+            ApplyGravity();
+            Vector3 motion = -selfTransform.forward * backstepSpeed + Vector3.up * verticalVelocity;
+            cc.Controller.Move(motion * Time.deltaTime);
+
+            backstepTimer -= Time.deltaTime;
+            if (backstepTimer <= 0f)
+            {
+                EndBackstep();
+            }
+        }
+
+        public void OnRollAnimationEnd()
+        {
+            if (!isRolling) return;
+            EndRoll();
+        }
+
+        public void OnBackstepAnimationEnd()
+        {
+            if (!isBackstepping) return;
+            EndBackstep();
+        }
+
+        private void EndRoll()
+        {
+            isRolling = false;
+            rollCooldownTimer = rollCooldown;
+        }
+
+        private void EndBackstep()
+        {
+            isBackstepping = false;
+            rollCooldownTimer = rollCooldown;
         }
     }
 }
