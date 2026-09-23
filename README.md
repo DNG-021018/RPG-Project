@@ -1,11 +1,11 @@
 ## DEV LOG ##
 
-Day 1: 28/9/2026
+Day 1: 28/8/2026
 - Tạo Project
 - Tìm assets
 - Lên cho character system
 
-Day 2: 29/9/2026
+Day 2: 29/8/2026
 - Tạo base cho character
     + Base character được viết theo hướng components
     + Chia nhỏ các chức năng thành nhiều components khác nhau (health, combat, stamina, poise, movement, .....), character nào cần coponent nào thì có thể tự add
