@@ -16,14 +16,11 @@ namespace RPG.Combat.Character
         public virtual void OnCoreInit(CharacterCore characterCore)
         {
             cc = characterCore;
-        }
-
-        public virtual void OnCoreStart()
-        {
             if (animator == null) animator = cc.GetComponentInChildren<Animator>();
         }
 
         public virtual void OnCoreAwake() { }
+        public virtual void OnCoreStart() { }
         public virtual void OnCoreUpdate() { }
         public virtual void OnCoreEnable() { }
         public virtual void OnCoreFixedUpdate() { }

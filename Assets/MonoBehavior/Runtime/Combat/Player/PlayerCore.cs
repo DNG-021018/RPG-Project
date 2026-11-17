@@ -1,6 +1,5 @@
 using UnityEngine;
 using RPG.Combat.Player.Input;
-using System;
 
 namespace RPG.Combat.Character
 {

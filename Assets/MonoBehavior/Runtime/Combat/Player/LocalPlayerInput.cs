@@ -46,11 +46,6 @@ namespace RPG.Combat.Player.Input
             _currentInput.Move = context.ReadValue<Vector2>();
         }
 
-        public void OnLook(InputAction.CallbackContext context)
-        {
-            _currentInput.Look = context.ReadValue<Vector2>();
-        }
-
         public void OnJump(InputAction.CallbackContext context)
         {
             if (context.performed) _jumpQueued = true;
@@ -69,6 +64,30 @@ namespace RPG.Combat.Player.Input
         public void OnRoll(InputAction.CallbackContext context)
         {
             if (context.performed) _rollQueued = true;
+        }
+
+        public void OnAttack(InputAction.CallbackContext context)
+        {
+            if (context.started)
+            {
+
+            }
+        }
+
+        public void OnSkills(InputAction.CallbackContext context)
+        {
+            if (context.started)
+            {
+
+            }
+        }
+
+        public void OnPickUp(InputAction.CallbackContext context)
+        {
+            if (context.started)
+            {
+
+            }
         }
     }
 }

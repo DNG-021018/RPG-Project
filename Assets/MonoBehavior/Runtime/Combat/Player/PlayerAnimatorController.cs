@@ -1,20 +1,14 @@
-using RPG.Combat.Character;
+using System;
 using UnityEngine;
+using RPG.Combat.Character;
 
 namespace RPG
 {
+    using aniPlayer = Helpers.AnimatorKey.AnimatorParameter.Player;
+
+    [Serializable]
     public class PlayerAnimatorController : CharacterAnimatorController
     {
-        private static readonly int BlendXHash = Animator.StringToHash("BlendX");
-        private static readonly int BlendYHash = Animator.StringToHash("BlendY");
-        private static readonly int IsCouchHash = Animator.StringToHash("isCouch");
-        private static readonly int IsRollingHash = Animator.StringToHash("isRolling");
-        private static readonly int IsBackstepHash = Animator.StringToHash("isBackstep");
-        private static readonly int IsJumpHash = Animator.StringToHash("isJump");
-        private static readonly int IsFallingHash = Animator.StringToHash("isFalling");
-        private static readonly int IsHeavyFallingHash = Animator.StringToHash("isHeavyFalling");
-        private static readonly int IsLightFallingHash = Animator.StringToHash("isLightFalling");
-
         [SerializeField] private float blendDampTime = 0.15f;
         [HideInInspector] private PlayerMovement movement;
 
@@ -24,22 +18,25 @@ namespace RPG
         {
             base.OnCoreInit(characterCore);
             movement = cc.TryGetCore<PlayerMovement>();
-            if (movement == null)
+
+            animEvents = animator.GetComponent<CharacterAnimationEvents>();
+            if (animEvents == null)
             {
-                logger.LogWarning(this, "Không tìm thấy PlayerMovement trên " + cc.name + " - sẽ không animate được.");
+                animEvents = animator.gameObject.AddComponent<CharacterAnimationEvents>();
             }
+        }
+
+        public override void OnCoreEnable()
+        {
+            base.OnCoreEnable();
+
+            animEvents.OnRollEnd += HandleRollAnimationEnd;
+            animEvents.OnBackstepEnd += HandleBackstepAnimationEnd;
         }
 
         public override void OnCoreStart()
         {
             base.OnCoreStart();
-
-            if (animator == null) return;
-
-            animEvents = animator.GetComponent<CharacterAnimationEvents>();
-            if (animEvents == null) animEvents = animator.gameObject.AddComponent<CharacterAnimationEvents>();
-            animEvents.OnRollEnd += HandleRollAnimationEnd;
-            animEvents.OnBackstepEnd += HandleBackstepAnimationEnd;
         }
 
         public override void OnCoreUpdate()
@@ -48,20 +45,20 @@ namespace RPG
             if (animator == null || movement == null) return;
 
             Vector2 blend = movement.LocomotionBlend;
-            animator.SetFloat(BlendXHash, blend.x, blendDampTime, Time.deltaTime);
-            animator.SetFloat(BlendYHash, blend.y, blendDampTime, Time.deltaTime);
-            animator.SetBool(IsCouchHash, movement.IsCrouching);
-            animator.SetBool(IsRollingHash, movement.IsRolling);
-            animator.SetBool(IsBackstepHash, movement.IsBackstepping);
-            animator.SetBool(IsJumpHash, movement.IsJumping);
-            animator.SetBool(IsFallingHash, movement.IsFalling);
-            animator.SetBool(IsHeavyFallingHash, movement.JustLandedHeavy);
-            animator.SetBool(IsLightFallingHash, movement.JustLandedLight);
+            animator.SetFloat(aniPlayer.BlendXHash, blend.x, blendDampTime, Time.deltaTime);
+            animator.SetFloat(aniPlayer.BlendYHash, blend.y, blendDampTime, Time.deltaTime);
+            animator.SetBool(aniPlayer.IsCouchHash, movement.IsCrouching);
+            animator.SetBool(aniPlayer.IsRollingHash, movement.IsRolling);
+            animator.SetBool(aniPlayer.IsBackstepHash, movement.IsBackstepping);
+            animator.SetBool(aniPlayer.IsJumpHash, movement.IsJumping);
+            animator.SetBool(aniPlayer.IsFallingHash, movement.IsFalling);
+            animator.SetBool(aniPlayer.IsHeavyFallingHash, movement.JustLandedHeavy);
+            animator.SetBool(aniPlayer.IsLightFallingHash, movement.JustLandedLight);
         }
 
-        public override void OnCoreDestroy()
+        public override void OnCoreDisable()
         {
-            base.OnCoreDestroy();
+            base.OnCoreDisable();
             if (animEvents != null)
             {
                 animEvents.OnRollEnd -= HandleRollAnimationEnd;
@@ -71,12 +68,12 @@ namespace RPG
 
         private void HandleRollAnimationEnd()
         {
-            movement?.OnRollAnimationEnd();
+            if (movement != null) movement.OnRollAnimationEnd();
         }
 
         private void HandleBackstepAnimationEnd()
         {
-            movement?.OnBackstepAnimationEnd();
+            if (movement != null) movement.OnBackstepAnimationEnd();
         }
     }
 }

@@ -78,7 +78,7 @@ namespace RPG.Combat.Character
 
             PlayerInputData data = input.CurrentInput;
             IsGrounded = cc.Controller.isGrounded;
-            /// IsCrouching = data.CrouchHeld;
+            /// IsCrouching = data.CrouchHeld; // disable crouch for now 
 
             JustLandedHeavy = false;
             JustLandedLight = false;

@@ -19,6 +19,7 @@ namespace RPG.Combat.Character
             Controller = GetComponent<CharacterController>();
 
             SetupCores();
+
             foreach (ICharacterComponents core in _cores)
             {
                 core.OnCoreAwake();
@@ -53,16 +54,6 @@ namespace RPG.Combat.Character
         {
             Register(new CharacterHealth());
             Register(new CharacterCombat());
-        }
-
-        public T TryGetCore<T>() where T : class
-        {
-            if (_coreDict.TryGetValue(typeof(T), out var core))
-            {
-                return core as T;
-            }
-
-            return null;
         }
 
         void OnEnable()
@@ -119,6 +110,21 @@ namespace RPG.Combat.Character
             {
                 characterCore.OnCoreDestroy();
             }
+        }
+
+        // Helpers
+        public T TryGetCore<T>() where T : class
+        {
+            if (_coreDict.TryGetValue(typeof(T), out var core))
+            {
+                return core as T;
+            }
+
+            if (core == null)
+            {
+                logger.LogWarning(typeof(T).Name, $"Cant find {typeof(T).Name}");
+            }
+            return null;
         }
     }
 }
